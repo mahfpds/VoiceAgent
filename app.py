@@ -109,7 +109,6 @@ async def handle_incoming_call(request: Request):
         """,
         media_type="application/xml",
     )
-        media_type="application/xml",
     )
 
 # ───────────────── helper I/O ───────────────── #
