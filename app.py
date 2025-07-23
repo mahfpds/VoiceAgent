@@ -97,11 +97,6 @@ async def index():
 
 @app.api_route("/incoming-call", methods=["GET", "POST"])
 async def handle_incoming_call(request: Request):
-    host = request.url.hostname
-    return HTMLResponse(
-        content=f"""
-        @app.api_route("/incoming-call", methods=["GET", "POST"])
-async def handle_incoming_call(request: Request):
     # Use your actual RunPod URL instead of request.url.hostname
     host = "ofzhq404tvnfh9-5050.proxy.runpod.net"
     return HTMLResponse(
@@ -112,6 +107,8 @@ async def handle_incoming_call(request: Request):
           </Connect>
         </Response>
         """,
+        media_type="application/xml",
+    )
         media_type="application/xml",
     )
 
