@@ -19,9 +19,7 @@ def stream(text: str, chunk_ms: int = 20):
     Yield 20 ms μ-law frames (160 B) **as the TTS bytes arrive**.
     Latency ≈ first packet in ~250 ms vs. >1 s previously.
     """
-    start = time.perf_counter()
     payload = PAYLOAD_BASE | {"text": text}
-    i = 0
 
     with httpx.stream("POST", URL, headers=HEADERS, json=payload, timeout=None) as r:
         r.raise_for_status()
@@ -30,7 +28,9 @@ def stream(text: str, chunk_ms: int = 20):
             buf.extend(data)
             # ElevenLabs already gives μ‑law 8 kHz; just slice into 160‑byte frames
             while len(buf) >= 160:
-                if i == 0:
-                    print(f"[⏱️ TTS time {time.perf_counter() - start:.3f}s]")
-                    i = 1
                 yield bytes(buf[:160]); del buf[:160]
+
+    # flush trailing partial (pad with silence)
+    if buf:
+        buf.extend(b"\x7F"*(160-len(buf)))  # μ-law silence byte
+        yield bytes(buf[:160])

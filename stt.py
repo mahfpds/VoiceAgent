@@ -12,13 +12,13 @@ MIN_VOICE_FR    = 5                  # 0.10 s speech → flush
 WIN_SEC, HOP_SEC = 4, 1              # longer window = better context
 ENERGY_FLOOR    = 150
 MODEL_NAME      = "large-v3"
+# MODEL_NAME      = "medium"
 
 _model = WhisperModel(
     MODEL_NAME,
     device="cuda",
     compute_type="float16", 
 )
-
 
 # high‑quality decode parameters
 DECODE_OPTS = dict(
@@ -41,6 +41,7 @@ class WhisperStream:
         self._sil = self._voice = 0
         self._q = asyncio.Queue()
         self._lang = None           # becomes "en", "de", etc.
+        self._lang_buf = bytearray()   # NEW  collect for lang‑detect
 
     def feed_audio(self, pcm16: bytes):
         self._ring.extend(pcm16)
@@ -63,7 +64,7 @@ class WhisperStream:
                             self._q.put_nowait(bytes(self._speech))
                         self._speech.clear()
                         self._voice = self._sil = 0
-                        
+
     # --------------- output side --------------- #
     async def __aiter__(self):
         hop, win = HOP_SEC * ASR_SR * 2, WIN_SEC * ASR_SR * 2
@@ -105,4 +106,6 @@ class WhisperStream:
 
 def new_stream():
     return WhisperStream()
+
+
 
