@@ -109,7 +109,7 @@ async def handle_incoming_call(request: Request):
         """,
         media_type="application/xml",
     )
-    )
+    
 
 # ───────────────── helper I/O ───────────────── #
 async def stream_ulaw_frames(ws: WebSocket, frame_iter, stream_sid: str, barge_event: asyncio.Event, label: str | None = None):
