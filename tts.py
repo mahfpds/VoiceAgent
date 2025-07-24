@@ -2,19 +2,43 @@ import os, audioop, asyncio, time, torch
 import numpy as np
 import scipy.signal
 from TTS.api import TTS
+import threading
 
-# Initialize XTTS v2 once
+# Initialize XTTS v2 once at startup (not during first call)
 _tts_model = None
+_model_loaded = False
+_loading_lock = threading.Lock()
 
-def get_tts_model():
-    global _tts_model
-    if _tts_model is None:
-        print("Loading XTTS model...")
-        _tts_model = TTS("tts_models/multilingual/multi-dataset/xtts_v2")
-        if torch.cuda.is_available():
-            _tts_model = _tts_model.to("cuda")
-        print("XTTS model loaded!")
+def ensure_tts_model():
+    """Load TTS model in a thread-safe way without blocking"""
+    global _tts_model, _model_loaded
+    
+    if _model_loaded:
+        return _tts_model
+        
+    with _loading_lock:
+        if not _model_loaded:
+            print("Loading XTTS model...")
+            try:
+                _tts_model = TTS("tts_models/multilingual/multi-dataset/xtts_v2")
+                if torch.cuda.is_available():
+                    _tts_model = _tts_model.to("cuda")
+                _model_loaded = True
+                print("XTTS model loaded!")
+            except Exception as e:
+                print(f"Failed to load XTTS: {e}")
+                _tts_model = None
+                
     return _tts_model
+
+# Pre-load the model at import time (non-blocking)
+def _preload_model():
+    """Load model in background thread"""
+    ensure_tts_model()
+
+# Start loading immediately when module is imported
+_preload_thread = threading.Thread(target=_preload_model, daemon=True)
+_preload_thread.start()
 
 def stream(text: str, chunk_ms: int = 20, **kwargs):
     """
@@ -23,8 +47,10 @@ def stream(text: str, chunk_ms: int = 20, **kwargs):
     Drop-in replacement for ElevenLabs streaming function.
     """
     try:
-        # Get TTS model
-        tts = get_tts_model()
+        # Get TTS model (should already be loaded)
+        tts = ensure_tts_model()
+        if tts is None:
+            raise Exception("TTS model not loaded")
         
         # Extract language from kwargs (passed from LLM chain)
         # Format: "Language with code 'de'" -> extract 'de'
